@@ -1,12 +1,6 @@
-﻿/*
-*  Create a Task and attach continuations to it according to the following criteria:
-   a.    Continuation task should be executed regardless of the result of the parent task.
-   b.    Continuation task should be executed when the parent task finished without success.
-   c.    Continuation task should be executed when the parent task would be finished with fail and parent task thread should be reused for continuation
-   d.    Continuation task should be executed outside of the thread pool when the parent task would be cancelled
-   Demonstrate the work of the each case with console utility.
-*/
-using System;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MultiThreading.Task6.Continuation
 {
@@ -14,17 +8,79 @@ namespace MultiThreading.Task6.Continuation
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Create a Task and attach continuations to it according to the following criteria:");
-            Console.WriteLine("a.    Continuation task should be executed regardless of the result of the parent task.");
-            Console.WriteLine("b.    Continuation task should be executed when the parent task finished without success.");
-            Console.WriteLine("c.    Continuation task should be executed when the parent task would be finished with fail and parent task thread should be reused for continuation.");
-            Console.WriteLine("d.    Continuation task should be executed outside of the thread pool when the parent task would be cancelled.");
-            Console.WriteLine("Demonstrate the work of the each case with console utility.");
-            Console.WriteLine();
+            Console.WriteLine("Continuations demonstration:");
 
-            // feel free to add your code
+            var cts = new CancellationTokenSource();
 
+            Task parentTask = CreateParentTask(cts.Token);
+
+            // Case a: Continuation executed regardless of the result of the parent task
+            parentTask.ContinueWith(task =>
+            {
+                Console.WriteLine("Case a: Continuation executed regardless of the result.");
+            });
+
+            // Case b: Continuation executed when the parent task finished without success
+            parentTask.ContinueWith(task =>
+            {
+                Console.WriteLine("Case b: Continuation executed when the parent task failed.");
+            }, TaskContinuationOptions.OnlyOnFaulted);
+
+            // Case c: Continuation task reuses the parent task thread when parent task fails
+            parentTask.ContinueWith(task =>
+            {
+                Console.WriteLine("Case c: Continuation executed on the same thread as the parent task after failure.");
+                Console.WriteLine($"Current Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+            }, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+
+            // Case d: Continuation executed outside the thread pool when the parent task is cancelled
+            parentTask.ContinueWith(task =>
+            {
+                Console.WriteLine("Case d: Continuation executed outside the thread pool after cancellation.");
+                Console.WriteLine($"Task executed by thread ID: {Thread.CurrentThread.ManagedThreadId}");
+            }, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.LongRunning);
+
+            try
+            {
+                parentTask.Wait();
+            }
+            catch (AggregateException ae)
+            {
+                foreach (var ex in ae.InnerExceptions)
+                {
+                    Console.WriteLine($"Caught Exception: {ex.Message}");
+                }
+            }
+
+            Console.WriteLine("Press Enter to exit...");
             Console.ReadLine();
+        }
+
+        /// <summary>
+        /// Creates and returns a parent task.
+        /// Uncomment code sections in the parent task to demonstrate different scenarios.
+        /// </summary>
+        private static Task CreateParentTask(CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+            {
+                Console.WriteLine("Parent Task is starting...");
+                Thread.Sleep(1000);
+
+                // Uncomment one of the following lines to test different scenarios:
+
+                // Simulate failure
+                // throw new InvalidOperationException("Simulated failure in Parent Task.");
+
+                // Simulate cancellation
+                // if (cancellationToken.IsCancellationRequested)
+                // {
+                //     Console.WriteLine("Parent Task was cancelled.");
+                //     cancellationToken.ThrowIfCancellationRequested();
+                // }
+
+                Console.WriteLine("Parent Task completed successfully.");
+            }, cancellationToken);
         }
     }
 }
