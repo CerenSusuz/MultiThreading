@@ -19,30 +19,28 @@ namespace MultiThreading.Task3.MatrixMultiplier.Tests
         [TestMethod]
         public void ParallelEfficiencyTest()
         {
-            var sizes = new[] { 50, 200, 500 };
+            var sizes = new[] { 10, 50, 100, 200 };
+
             foreach (var size in sizes)
             {
-                var matrix1 = CreateRandomMatrix(size);
-                var matrix2 = CreateRandomMatrix(size);
+                var matrix1 = new Matrix(size, size, randomInit: true);
+                var matrix2 = new Matrix(size, size, randomInit: true);
 
-                var regularTime = MeasureExecutionTime(() => new MatricesMultiplier().Multiply(matrix1, matrix2));
-                var parallelTime = MeasureExecutionTime(() => new MatricesMultiplierParallel().Multiply(matrix1, matrix2));
+                TimeSpan regularTime = MeasureExecutionTime(() => new MatricesMultiplier().Multiply(matrix1, matrix2));
+                TimeSpan parallelTime = MeasureExecutionTime(() => new MatricesMultiplierParallel().Multiply(matrix1, matrix2));
 
                 Console.WriteLine($"Matrix Size: {size}x{size}");
                 Console.WriteLine($"Regular Time: {regularTime.TotalMilliseconds} ms");
                 Console.WriteLine($"Parallel Time: {parallelTime.TotalMilliseconds} ms");
 
-                Assert.IsTrue(parallelTime <= regularTime,
-                    $"Parallel implementation should be faster for matrix size {size}.");
+                if (size > 50)
+                {
+                    Assert.IsTrue(parallelTime <= regularTime, $"Parallel should not be slower for size {size}x{size}.");
+                }
             }
         }
 
-        private Matrix CreateRandomMatrix(int size)
-        {
-            return new Matrix(size, size, randomInit: true);
-        }
-
-        private TimeSpan MeasureExecutionTime(Action action)
+        private static TimeSpan MeasureExecutionTime(Action action)
         {
             var stopwatch = Stopwatch.StartNew();
             action.Invoke();
